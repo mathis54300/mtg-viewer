@@ -22,11 +22,13 @@ class ApiCardController extends AbstractController
     {
     }
 
-    #[Route('/all/{setCode?}', name: 'List all cards', methods: ['GET'])]
+    #[Route('/all/{page<\d+>?1}/{limit<\d+>?100}/{setCode?}', name: 'List all cards', methods: ['GET'])]
     #[OA\Get(description: 'Return all cards in the database')]
+    #[OA\Parameter(name: 'page', description: 'Page number', in: 'path', required: false, schema: new OA\Schema(type: 'integer'))]
+    #[OA\Parameter(name: 'limit', description: 'Number of cards per page', in: 'path', required: false, schema: new OA\Schema(type: 'integer'))]
     #[OA\Parameter(name: 'setCode', description: 'Set code of the card', in: 'path', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'List all cards')]
-    public function cardAll(string $setCode = null): Response
+    public function cardAll(int $page = 1, int $limit = 100, string $setCode = null): Response
     {
         $queryBuilder = $this->entityManager->getRepository(Card::class)->createQueryBuilder('c');
 
@@ -34,6 +36,9 @@ class ApiCardController extends AbstractController
             $queryBuilder->where('c.set_code = :setCode')
                 ->setParameter('setCode', $setCode);
         }
+
+        $queryBuilder->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
 
         $this->logger->info('Fetching all cards' . is_null($setCode) ? '' : ' with set code: ' . $setCode);
         $cards = $queryBuilder->getQuery()->getResult();

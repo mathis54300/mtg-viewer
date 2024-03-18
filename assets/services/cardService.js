@@ -1,5 +1,5 @@
-export async function fetchAllCards() {
-    const response = await fetch('/api/card/all');
+export async function fetchAllCards(page = 1) {
+    const response = await fetch(`/api/card/all/${page}`);
     if (!response.ok) throw new Error('Failed to fetch cards');
     const result = await response.json();
     return result;
