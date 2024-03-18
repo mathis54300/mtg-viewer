@@ -17,14 +17,17 @@ class ApiCardController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger
-    ) {
+        private readonly LoggerInterface        $logger
+    )
+    {
     }
+
     #[Route('/all', name: 'List all cards', methods: ['GET'])]
     #[OA\Put(description: 'Return all cards in the database')]
     #[OA\Response(response: 200, description: 'List all cards')]
     public function cardAll(): Response
     {
+        $this->logger->info('Fetching all cards');
         $cards = $this->entityManager->getRepository(Card::class)->findAll();
         return $this->json($cards);
     }
@@ -36,8 +39,10 @@ class ApiCardController extends AbstractController
     #[OA\Response(response: 404, description: 'Card not found')]
     public function cardShow(string $uuid): Response
     {
+        $this->logger->info('Fetching card with UUID: ' . $uuid);
         $card = $this->entityManager->getRepository(Card::class)->findOneBy(['uuid' => $uuid]);
         if (!$card) {
+            $this->logger->error('Card not found with UUID: ' . $uuid);
             return $this->json(['error' => 'Card not found'], 404);
         }
         return $this->json($card);

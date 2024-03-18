@@ -34,31 +34,46 @@ class ImportCardCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // On récupère le temps actuel
         $io = new SymfonyStyle($input, $output);
         $filepath = __DIR__ . '/../../data/cards.csv';
         $handle = fopen($filepath, 'r');
 
         $this->logger->info('Importing cards from ' . $filepath);
+        $startTime = microtime(true);
+
         if ($handle === false) {
+            $this->logger->error('File not found');
             $io->error('File not found');
             return Command::FAILURE;
         }
 
         $i = 0;
+        $batchSize = 500; // flush and clear every 500 cards
         $this->csvHeader = fgetcsv($handle);
         while (($row = $this->readCSV($handle)) !== false) {
             $i++;
-            $io->writeln($this->addCard($row)->getName());
+            $this->addCard($row);
 
-            // TODO: Importer toutes les cartes
-            if ($i > 500) {
-                break;
+            if (($i % $batchSize) === 0) {
+                $this->entityManager->flush();
+                $this->entityManager->clear(); // Detaches all objects from Doctrine!
             }
+
+            // if ($i > 10000) {
+            // break;
+            // }
         }
 
+        // Flush and clear one last time to catch any remaining cards
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $endTime = microtime(true);
+        $this->logger->info('End importing cards. Duration: ' . ($endTime - $startTime) . ' seconds');
+
         fclose($handle);
-        $io->success('File found, ' . $i . ' lines read.');
+        $io->success('Import completed successfully in ' . ($endTime - $startTime) . ' seconds');
+
         return Command::SUCCESS;
     }
 
@@ -88,7 +103,8 @@ class ImportCardCommand extends Command
             $card->setText($row['text']);
             $card->setType($row['type']);
             $this->entityManager->persist($card);
-            $this->entityManager->flush();
+        } else {
+            $this->logger->info('Card already exists with UUID: ' . $uuid);
         }
         return $card;
     }
