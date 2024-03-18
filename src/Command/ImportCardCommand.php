@@ -59,9 +59,9 @@ class ImportCardCommand extends Command
                 $this->entityManager->clear(); // Detaches all objects from Doctrine!
             }
 
-            // if ($i > 10000) {
-            // break;
-            // }
+            if ($i > 1000) {
+                break;
+            }
         }
 
         // Flush and clear one last time to catch any remaining cards
@@ -103,8 +103,6 @@ class ImportCardCommand extends Command
             $card->setText($row['text']);
             $card->setType($row['type']);
             $this->entityManager->persist($card);
-        } else {
-            $this->logger->info('Card already exists with UUID: ' . $uuid);
         }
         return $card;
     }

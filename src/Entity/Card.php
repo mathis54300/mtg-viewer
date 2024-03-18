@@ -39,7 +39,7 @@ class Card implements \JsonSerializable
     private ?string $subtype = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    private ?string $setCode = null;
+    private ?string $set_code = null;
 
     public function getId(): ?int
     {
@@ -166,7 +166,7 @@ class Card implements \JsonSerializable
             'type' => $this->type,
             'text' => $this->text,
             'subtype' => $this->subtype,
-            'setCode' => $this->setCode,
+            'set_code' => $this->set_code,
         ];
     }
 }

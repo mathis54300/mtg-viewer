@@ -22,14 +22,38 @@ class ApiCardController extends AbstractController
     {
     }
 
-    #[Route('/all', name: 'List all cards', methods: ['GET'])]
-    #[OA\Put(description: 'Return all cards in the database')]
+    #[Route('/all/{setCode?}', name: 'List all cards', methods: ['GET'])]
+    #[OA\Get(description: 'Return all cards in the database')]
+    #[OA\Parameter(name: 'setCode', description: 'Set code of the card', in: 'path', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'List all cards')]
-    public function cardAll(): Response
+    public function cardAll(string $setCode = null): Response
     {
-        $this->logger->info('Fetching all cards');
-        $cards = $this->entityManager->getRepository(Card::class)->findAll();
+        $queryBuilder = $this->entityManager->getRepository(Card::class)->createQueryBuilder('c');
+
+        if (!is_null($setCode)) {
+            $queryBuilder->where('c.set_code = :setCode')
+                ->setParameter('setCode', $setCode);
+        }
+
+        $this->logger->info('Fetching all cards' . is_null($setCode) ? '' : ' with set code: ' . $setCode);
+        $cards = $queryBuilder->getQuery()->getResult();
+
         return $this->json($cards);
+    }
+
+    #[Route('/set-codes', name: 'Get set codes', methods: ['GET'])]
+    #[OA\Get(description: 'Get all set codes')]
+    #[OA\Response(response: 200, description: 'List of set codes')]
+    public function getSetCodes(): Response
+    {
+        $this->logger->info('Fetching all set codes');
+        $setCodes = $this->entityManager->getRepository(Card::class)->createQueryBuilder('c')
+            ->select('c.set_code')
+            ->distinct()
+            ->getQuery()
+            ->getResult();
+
+        return $this->json($setCodes);
     }
 
     #[Route('/{uuid}', name: 'Show card', methods: ['GET'])]
@@ -46,5 +70,32 @@ class ApiCardController extends AbstractController
             return $this->json(['error' => 'Card not found'], 404);
         }
         return $this->json($card);
+    }
+
+    #[Route('/search/{name}/{setCode?}', name: 'Search cards', methods: ['GET'])]
+    #[OA\Get(description: 'Search cards by name and set code')]
+    #[OA\Parameter(name: 'name', description: 'Name of the card', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'setCode', description: 'Set code of the card', in: 'path', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'List of cards')]
+    public function cardSearch(string $name, string $setCode = null): Response
+    {
+        if (strlen($name) < 3) {
+            return $this->json(['error' => 'The search term must be at least 3 characters long'], 400);
+        }
+
+        $queryBuilder = $this->entityManager->getRepository(Card::class)->createQueryBuilder('c')
+            ->where('c.name LIKE :name')
+            ->setParameter('name', '%' . $name . '%')
+            ->setMaxResults(20);
+
+        if (!is_null($setCode)) {
+            $queryBuilder->andWhere('c.set_code = :setCode')
+                ->setParameter('setCode', $setCode);
+        }
+
+        $this->logger->info('Searching for cards with name: ' . $name .  is_null($setCode) ? '' : ' and set code: ' . $setCode);
+        $cards = $queryBuilder->getQuery()->getResult();
+
+        return $this->json($cards);
     }
 }
